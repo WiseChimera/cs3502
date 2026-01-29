@@ -5,8 +5,11 @@ hello
 employee
 logwriter
 
-#Logfiles
+#Log files
 *.log
+
+#txt files
+*.txt
 
 # Editor backups
 *~
