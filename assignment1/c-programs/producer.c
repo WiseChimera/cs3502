@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
                 input = fopen(filename, "r");
                 if (input == NULL) {
                         perror("file open error");
-                        return 1;
+                        exit(1);
                 }
         }
         char buffer[buffer_size];
@@ -62,12 +62,13 @@ int main(int argc, char *argv[]) {
         // reads data from input and writes it out to stdout
         while (!shutdown_flag && (n = fread(buffer, 1, buffer_size, input)) > 0) {
                 fwrite(buffer, 1, n, stdout);
+		usleep(1000);
 		for(size_t i = 0; i < n; i++) { // keeps track of # of lines read
 			if(buffer[i] == '\n')
 				lines_read++;
 		}
 		if(printstats_flag == 1) { // handles SIGUSR1 to print # of lines read
-			printf("Lines read so far: %zu\n", lines_read);
+			printf("# of Lines read: %zu\n", lines_read);
 			fflush(stdout);
 			printstats_flag = 0;
 		}
@@ -78,4 +79,5 @@ int main(int argc, char *argv[]) {
         }
         return 0;
 }
+
 

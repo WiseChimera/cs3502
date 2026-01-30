@@ -5,8 +5,8 @@
 #include <sys/wait.h>
 
 int main() {
-	int pipe1[2]; // from Parent to Child, pipe1[1] --> parent writes
-	int pipe2[2]; // from Child to Parent, pipe2[1] --> child writes
+	int pipe1[2]; // from Parent to Child, pipe1[1] --> parent writes, pipe1[0] --> child reads
+	int pipe2[2]; // from Child to Parent, pipe2[1] --> child writes, pipe2[0] --> parent reads
 	pid_t pid;
 	if(pipe(pipe1) == -1) {
 		printf("pipe1 failed to open");
