@@ -5,8 +5,8 @@
 #include <sys/wait.h>
 
 int main() {
-	int pipe1[2]; // from Parent to Child, pipe1[1] --> parent writes, pipe1[0] --> child reads
-	int pipe2[2]; // from Child to Parent, pipe2[1] --> child writes, pipe2[0] --> parent reads
+	int pipe1[2]; // from Parent to Child, pipe1[1] --> parent writes
+	int pipe2[2]; // from Child to Parent, pipe2[1] --> child writes
 	pid_t pid;
 	if(pipe(pipe1) == -1) {
 		printf("pipe1 failed to open");
@@ -26,11 +26,22 @@ int main() {
 		char buffer[100];
 		close(pipe1[1]); // close write from parent to child
 		close(pipe2[0]); // close read from child to parent
-		read(pipe1[0], buffer, sizeof(buffer)); // receives message from parent
-		printf("Child received: %s\n", buffer);
-		char reply[] = "Reply from child";
-		write(pipe2[1], reply, strlen(reply) + 1); // replies to parent
-		printf("Child replies: %s\n", reply);
+		int n = read(pipe1[0], buffer, sizeof(buffer));
+		// double checks child received message from parent
+		if (n > 0) {
+    			buffer[n] = '\0'; 
+    			printf("Child received: %s\n", buffer);
+    			char reply[] = "Reply from child";
+    			write(pipe2[1], reply, strlen(reply) + 1);
+    			printf("Child replies: %s\n", reply);
+		} else if (n == 0) {
+    			// Parent closed the pipe without sending anything
+    			printf("Child: no message received\n");
+		} else {
+    		// Error case
+    			perror("Child read error");
+		}
+
 		close(pipe1[0]);
 		close(pipe2[1]);
 	} else {
@@ -40,9 +51,21 @@ int main() {
 		close(pipe2[1]); // close write, from child to parent, parent to read
 		char msg[] = "Hello from parent";
 		write(pipe1[1], msg, strlen(msg) + 1); // parent writes to child
-		read(pipe2[0], buffer, sizeof(buffer)); // parent receives reply from child
-		printf("Parent received: %s\n", buffer);
-		
+		printf("Parent writes: %s\n", msg);
+		int n = read(pipe2[0], buffer, sizeof(buffer));
+		// double checks parent received msg from child
+		if (n > 0) {
+    			buffer[n] = '\0';
+    			printf("Parent received: %s\n", buffer);
+
+		} else if (n == 0) {
+    			// Child closed pipe without sending anything
+    			printf("Parent: no reply received\n");
+
+		} else {
+    			perror("Parent read error");
+		}
+
 		close(pipe1[1]);
 		close(pipe2[0]);
 	}
