@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 		item.producer_id = id;	// producer id of the item
 		item.value = item.producer_id * 1000 + i; // value of the item 
 		ptr->buffer[ptr->head] = item; // adds/overwrites item to the circular buffer
-		ptr->head = (ptr->head + 1) % BUFFER_SIZE; // redirects head to next index in buffer
+		ptr->head = (ptr->head + 1) % BUFFER_SIZE; // redirects head of buffer 
 		ptr->count++; // increases item count
 
 		sem_post(mutex); // exit critical section
