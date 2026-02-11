@@ -37,10 +37,13 @@ int main(int argc, char *argv[]) {
 		perror("shmat failed");
 		exit(1);
 	}
-
+	// initialized fields
+	ptr->head = 0;
+	ptr->tail = 0;
+	ptr->count = 0;
 	// opening three semaphores
 	sem_t* empty = sem_open("/sem_empty", O_CREAT, 0644, BUFFER_SIZE);
-	sem_t* full = sem_open("/sem_full", O_CREAT, 0644, 0);	
+	sem_t* full = sem_open("/sem_full", O_CREAT, 0644, 0);
 	sem_t* mutex = sem_open("/sem_mutex", O_CREAT, 0644, 1);
 
 	// writes to shared buffer
@@ -50,16 +53,16 @@ int main(int argc, char *argv[]) {
 
 		item_t item;
 		item.producer_id = id;	// producer id of the item
-		item.value = item.producer_id * 1000 + i; // value of the item 
+		item.value = item.producer_id * 1000 + i; // value of the item
 		ptr->buffer[ptr->head] = item; // adds/overwrites item to the circular buffer
-		ptr->head = (ptr->head + 1) % BUFFER_SIZE; // redirects head of buffer 
+		ptr->head = (ptr->head + 1) % BUFFER_SIZE; // redirects head of buffer
 		ptr->count++; // increases item count
 
 		sem_post(mutex); // exit critical section
-		sem_post(full); // signal that an item is available 
+		sem_post(full); // signal that an item is available
 		printf("Producer %d: Produced value %d\n", item.producer_id, item.value);
 	}
-	shmdt(ptr); // detach 
+	shmdt(ptr); // detach
 	// close semaphores
 	sem_close(empty);
 	sem_close(full);
