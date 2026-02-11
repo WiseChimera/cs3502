@@ -1,3 +1,8 @@
+/*
+Darren Ni
+CS3502 A2
+buffer.h
+*/
 #ifndef BUFFER_H
 #define BUFFER_H
 #define BUFFER_SIZE 10
