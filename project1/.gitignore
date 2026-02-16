@@ -1,0 +1,14 @@
+#compiled files
+*.o
+*.out
+phase1
+
+#Log files
+*.log
+
+#txt files
+*.txt
+
+# Editor backups
+*~
+*.swp
