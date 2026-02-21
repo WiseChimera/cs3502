@@ -21,6 +21,20 @@ typedef struct {
 // Global shared array - THIS CAUSES RACE CONDITIONS!
 Account accounts[NUM_ACCOUNTS];
 
+// transfer_unsafe() function to transfer money between accounts
+void transfer_unsafe(int to_id, int from_id, double amount) {
+	// gets the current balance of the accounts where the money is transferred to and from
+	double to_balance = accounts[to_id].balance;
+	double from_balance = accounts[from_id].balance;
+	// MODIFY (simulate processing time)
+	usleep(1); // This increases likelihood of race condition!
+	// tranfers money from the fromAccount to toAccount 
+	accounts[from_id].balance = from_balance - amount;
+	accounts[from_id].transaction_count++;
+	accounts[to_id].balance = to_balance + amount;
+	accounts[to_id].transaction_count++;
+}
+
 // TODO 2: Implement the thread function
 // Reference: See OSTEP Ch. 27 for pthread function signature
 // Reference: Appendix A.2 for void* parameter explanation
@@ -34,7 +48,10 @@ void* teller_thread(void* arg) {
 		// TODO 2b: Randomly select an account (0 to NUM_ACCOUNTS-1)
 		// Hint: Use rand_r(&seed) % NUM_ACCOUNTS
 		int account_idx = rand_r(&seed) % NUM_ACCOUNTS; // random account_id x selected
-		int account_idy = rand_r(&seed) % account_idx; // random account_id y selected that does not collide with account_id x
+		int account_idy;
+		do { // ensures that account_idy != account_idx
+    		account_idy = rand_r(&seed) % NUM_ACCOUNTS;
+		} while (account_idy == account_idx);
 		// TODO 2c: Generate random amount (1-100)
 		double amount = rand_r(&seed) % 100 + 1;
 		// TODO 2e: Call appropriate function
@@ -42,18 +59,6 @@ void* teller_thread(void* arg) {
 		printf("Teller %d: Transferred $%.2f to Account %d from Account %d\n", teller_id, amount, account_idx, account_idy);
 	}
 	return NULL;
-}
-
-// TO-NOT-DO 1: transfer_unsafe() 
-void transfer_unsafe(int to_id, int from_id, double amount) {
-	// gets the current balance of the accounts where the money is transferred to and from
-	double to_balance = accounts[to_id].balance;
-	double from_balance = accounts[from_id].balance;
-	// tranfers money from the fromAccount to toAccount 
-	accounts[from_id].balance = from_balance - amount;
-	accounts[from_id].transaction_count++;
-	accounts[to_id].balance = to_balance + amount;
-	accounts[to_id].transaction_count++;
 }
 
 // TODO 3: Implement main function
@@ -96,7 +101,7 @@ int main() {
 	// Question: What happens if you skip this step? 
 	for (int i = 0; i < NUM_THREADS; i++) {
 		// YOUR pthread_join CODE HERE
-		pthread_join(&threads[i], NULL);
+		pthread_join(threads[i], NULL);
 	}
 	// TODO 3f: Calculate and display results
 	printf("\n=== Final Results ===\n");
