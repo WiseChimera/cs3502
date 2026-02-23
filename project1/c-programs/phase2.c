@@ -31,18 +31,17 @@ void transfer_safe(int to_id, int from_id, double amount) {
     pthread_mutex_lock(&accounts[from_id].lock);
     // ===== CRITICAL SECTION =====
     // Only ONE thread can execute this at a time for this account
-    usleep(1); // simulate processing time
     // tranfers money from the fromAccount to toAccount 
-    accounts[from_id].balance -= amount;
+	accounts[from_id].balance -= amount;
 	accounts[from_id].transaction_count++;
-	accounts[to_id].balance -= amount;
+	accounts[to_id].balance += amount;
 	accounts[to_id].transaction_count++;
     // Release lock AFTER modifying shared data
     pthread_mutex_unlock(&accounts[to_id].lock);
     pthread_mutex_unlock(&accounts[from_id].lock);
 }
 
-// TODO 2: Implement the thread function Reference: OSTEP Ch. 27 for pthread function signature, 
+// Implement the thread function, Reference: OSTEP Ch. 27 for pthread function signature, 
 // Appendix A.2 for void* parameter explanation
 void* teller_thread(void* arg) {
 	int teller_id = *(int*)arg; // GIVEN: Extract thread ID
@@ -84,8 +83,8 @@ void initialize_accounts() {
 }
 
 int main() {
-    struct timespec start, end;
-	printf("=== Phase 2: Resource Protection ===\n\n");
+	struct timespec start, end;
+	printf("=== Phase 2: Mutex Protection Demo ===\n\n");
 	// Initialize all accounts
 	initialize_accounts();
 	// Display initial state (GIVEN)
@@ -100,7 +99,7 @@ int main() {
 	pthread_t threads[NUM_THREADS];
 	int thread_ids[NUM_THREADS]; // Separate array for IDs
 	// Create all threads, Reference: man pthread_create
-    clock_gettime(CLOCK_MONOTONIC, &start);
+	clock_gettime(CLOCK_MONOTONIC, &start);
 	for (int i = 0; i < NUM_THREADS; i++) {
 		thread_ids[i] = i; // Store ID persistently
 		pthread_create(&threads[i], NULL, teller_thread, & thread_ids[i]);
@@ -109,9 +108,9 @@ int main() {
 	for (int i = 0; i < NUM_THREADS; i++) {
 		pthread_join(threads[i], NULL);
 	}
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    cleanup_mutexes();
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+	cleanup_mutexes();
 	// Calculate and display results
 	printf("\n=== Final Results ===\n");
 	double actual_total = 0.0;
@@ -122,7 +121,7 @@ int main() {
 	printf("\nExpected total: $%.2f\n", expected_total);
 	printf("Actual total: $%.2f\n", actual_total);
 	printf("Difference: $%.2f\n", actual_total - expected_total);
-    printf("Time taken: %.4f seconds\n", elapsed);
+	printf("Time taken: %.4f seconds\n", elapsed);
 	// Add race condition detection message; Instruct user to run multiple times
 	if(expected_total != actual_total) {
 		printf("RACE CONDITION DETECTED!\n");
