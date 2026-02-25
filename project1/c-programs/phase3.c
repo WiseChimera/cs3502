@@ -122,11 +122,12 @@ int main() {
 		}
 		// deadlock suspected after more than 5 seconds
 		if(now-start > 5) {
-			printf("\n=== Deadlock Suspected ===\n");
+			printf("\n=== Deadlock Suspected - No progress detected ===\n");
 			printf("Program terminating due to deadlock.\n");
-			break;
+			exit(1);
 		}
 	}
+	// If there is a deadlock, program will never reach here
 	// Wait for all threads to complete, Reference: man pthread_join
 	for (int i = 0; i < NUM_THREADS; i++) {
 		pthread_join(threads[i], NULL);
