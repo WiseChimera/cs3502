@@ -79,7 +79,6 @@ int main() {
 		printf(" Account %d: $%.2f\n", i, accounts[i].balance);
 	}
 	// TODO 3b: Calculate expected final balance
-	// Question: With random deposits/withdrawals, what should total be? initial_balance - total withdrawls + total deposits
 	// Hint: Total money in system should remain constant!
 	double expected_total = NUM_ACCOUNTS * INITIAL_BALANCE; 
 	printf("\nExpected total: $%.2f\n\n", expected_total);
@@ -98,7 +97,6 @@ int main() {
 	}
 	// TODO 3e: Wait for all threads to complete
 	// Reference: man pthread_join
-	// Question: What happens if you skip this step? 
 	for (int i = 0; i < NUM_THREADS; i++) {
 		// YOUR pthread_join CODE HERE
 		pthread_join(threads[i], NULL);

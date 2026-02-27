@@ -8,9 +8,9 @@ Darren Ni
 #include <unistd.h>
 
 // Configuration - experiment with different values!
-#define NUM_ACCOUNTS 2
-#define NUM_THREADS 2
-#define TRANSACTIONS_PER_THREAD 1
+#define NUM_ACCOUNTS 4
+#define NUM_THREADS 6
+#define TRANSACTIONS_PER_THREAD 10
 #define INITIAL_BALANCE 1000.0
 
 // Updated Account structure with mutex (GIVEN)
@@ -24,55 +24,59 @@ typedef struct {
 // Global shared array - THIS CAUSES RACE CONDITIONS!
 Account accounts[NUM_ACCOUNTS];
 
-// TODO 1: Implement complete transfer function
-// Add balance checking (sufficient funds?)
-// Add error handling
+// STRATEGY 1: Lock Ordering
 // transfer_safe() function to transfer money between accounts
-void transfer_deadlock(int thread_id, int to_id, int from_id, double amount) {
-    // Lock source account
-    pthread_mutex_lock(&accounts[from_id].lock);
-	printf("Thread %ld: Locked account %d\n", thread_id, from_id);
+void safe_transfer_ordered(int to_id, int from_id, double amount) {
+	// locks lower account ID first, unlock in reverse order
+	int first = (from_id < to_id) ? from_id : to_id;
+	int second = (from_id > to_id) ? from_id : to_id;
+	pthread_mutex_lock(&accounts[first].lock);
 	// Simulate processing delay
 	usleep(100);
-	// Try to lock destination account
-	printf("Thread %ld: Waiting for account %d\n", thread_id, to_id);
-    pthread_mutex_lock(&accounts[to_id].lock);
-    // ===== CRITICAL SECTION =====
-	// Transfer from FromAccount to ToAccount(never reached if deadlocked)
-	// Checks if the source account has sufficient funds
-	if(accounts[from_id].balance < amount) {
-		printf("Thread %ld: Account %d has insufficient funds.\n", thread_id, from_id);
-		pthread_mutex_unlock(&accounts[to_id].lock);
-		pthread_mutex_unlock(&accounts[from_id].lock);
-		return;
-	}
+	pthread_mutex_lock(&accounts[second].lock);
+	// ===== CRITICAL SECTION =====
+	// tranfers money from the fromAccount to toAccount 
 	accounts[from_id].balance -= amount;
 	accounts[from_id].transaction_count++;
 	accounts[to_id].balance += amount;
 	accounts[to_id].transaction_count++;
-    // Release lock AFTER modifying shared data
-    pthread_mutex_unlock(&accounts[to_id].lock);
-    pthread_mutex_unlock(&accounts[from_id].lock);
+	// Release lock AFTER modifying shared data
+	pthread_mutex_unlock(&accounts[second].lock);
+	pthread_mutex_unlock(&accounts[first].lock);
 }
 
-// These two thread creation functions will deadlock
-void* thread_deadlock1(void* arg) {
-	int thread_id = *(int*)arg; 
-	unsigned int seed = time(NULL) ^ pthread_self();
-	double amount = rand_r(&seed) % 100 + 1;
-	transfer_deadlock(thread_id, 0, 1, amount);
-	printf("Thread %d: Transferred $%.2f to Account 0 from Account 1\n", thread_id, amount);
-	return NULL;
-}
-void* thread_deadlock2(void* arg) {
-	int thread_id = *(int*)arg; 
-	unsigned int seed = time(NULL) ^ pthread_self();
-	double amount = rand_r(&seed) % 100 + 1;
-	transfer_deadlock(thread_id, 1, 0, amount);
-	printf("Thread %d: Transferred $%.2f to Account 1 from Account 0\n", thread_id, amount);
-	return NULL;
+// STRATEGY 2: Timeout Mechanism
+void safe_transfer_timeout(from, to, amount) {
+	
 }
 
+// STRATEGY 3: Try-Lock with Backoff
+void safe_transfer_trylock(from, to, amount) {
+
+}
+
+
+// Implement the thread function, Reference: OSTEP Ch. 27 for pthread function signature, 
+// Appendix A.2 for void* parameter explanation
+void* teller_thread(void* arg) {
+	int teller_id = *(int*)arg; // GIVEN: Extract thread ID
+	// Initialize thread-safe random seed, Reference: Section 7.2 "Random Numbers per Thread"
+	unsigned int seed = time(NULL) ^ pthread_self();
+	for (int i = 0; i < TRANSACTIONS_PER_THREAD; i++) {
+		// Randomly select an account (0 to NUM_ACCOUNTS-1)
+		int account_idx = rand_r(&seed) % NUM_ACCOUNTS; // random account_id x selected
+		int account_idy;
+		do { // ensures that account_idy != account_idx
+    		account_idy = rand_r(&seed) % NUM_ACCOUNTS;
+		} while (account_idy == account_idx);
+		// Generate random amount (1-100)
+		double amount = rand_r(&seed) % 100 + 1;
+		// Call appropriate function- safe_transfer_ordered(), safe_transfer_timeout(), or safe_transfer_trylock()-- replace here
+		safe_transfer_ordered(account_idx, account_idy, amount);
+		printf("Teller %d: Transferred $%.2f to Account %d from Account %d\n", teller_id, amount, account_idx, account_idy);
+	}
+	return NULL;
+}
 
 // Add mutex cleanup in main(), Reference: man pthread_mutex_destroy
 // Important: Destroy mutexes AFTER all threads complete!
@@ -93,12 +97,11 @@ void initialize_accounts() {
     }
 }
 
-// TODO 3: Implement deadlock detection
 int main() {
-	printf("=== Phase 3: Deadlock Creation Demo ===\n\n");
+	printf("=== Phase 2: Mutex Protection Demo ===\n\n");
 	// Initialize all accounts
 	initialize_accounts();
-	// Display initial state 
+	// Display initial state (GIVEN)
 	printf("Initial State:\n");
 	for (int i = 0; i < NUM_ACCOUNTS; i++) {
 		printf(" Account %d: $%.2f\n", i, accounts[i].balance);
@@ -109,33 +112,21 @@ int main() {
 	// Create thread and thread ID arrays, Reference: man pthread_create for pthread_t type
 	pthread_t threads[NUM_THREADS];
 	int thread_ids[NUM_THREADS]; // Separate array for IDs
+    struct timespec start, end;
+	// start clock for performance measuring
+    clock_gettime(CLOCK_MONOTONIC, &start);
 	// Create all threads, Reference: man pthread_create
-	time_t start = time(NULL);
-	pthread_create(&threads[0], NULL, thread_deadlock1, & thread_ids[0]);
-	pthread_create(&threads[1], NULL, thread_deadlock2, & thread_ids[1]);
-	while(1) {
-		// check every second
-		sleep(1);
-		time_t now = time(NULL);
-		int count_1 =  accounts[0].transaction_count;
-		int count_2 =  accounts[1].transaction_count;
-		// no deadlock if transaction count incremented on both accounts
-		if(count_1 + count_2 >= 2) {
-			printf("\n=== Transaction successfully completed ===\n");
-			break;
-		}
-		// deadlock suspected after more than 5 seconds
-		if(now-start > 5) {
-			printf("\n=== Deadlock Suspected - No progress detected ===\n");
-			printf("Program terminating due to deadlock.\n");
-			exit(1);
-		}
+	for (int i = 0; i < NUM_THREADS; i++) {
+		thread_ids[i] = i; // Store ID persistently
+		pthread_create(&threads[i], NULL, teller_thread, & thread_ids[i]);
 	}
-	// If there is a deadlock, program will never reach here
 	// Wait for all threads to complete, Reference: man pthread_join
 	for (int i = 0; i < NUM_THREADS; i++) {
 		pthread_join(threads[i], NULL);
 	}
+	// end clock
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     cleanup_mutexes();
 	// Calculate and display results
 	printf("\n=== Final Results ===\n");
@@ -147,5 +138,11 @@ int main() {
 	printf("\nExpected total: $%.2f\n", expected_total);
 	printf("Actual total: $%.2f\n", actual_total);
 	printf("Difference: $%.2f\n", actual_total - expected_total);
+    printf("Time taken: %.4f seconds\n", elapsed);
+	// Add race condition detection message; Instruct user to run multiple times
+	if(expected_total != actual_total) {
+		printf("RACE CONDITION DETECTED!\n");
+		printf("Run the program multiple times to observe.\n");
+	}
 	return 0;
 }
