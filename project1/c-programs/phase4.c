@@ -136,7 +136,7 @@ int main() {
 	while(exit) {
 		printf("\n--- Menu ---");
 		printf("\n1. Test lock ordering\n2. Test trylock with backoff\n3. Exit\nChoose an option: ");
-		choice = scanf("%d");
+		scanf("%d", &choice);
 		if(choice == 1) {
 			printf("=== Phase 4: Deadlock Resolution ===\n");
 			printf("=== Testing lock ordering ===\n\n");
@@ -185,7 +185,6 @@ int main() {
 				printf("RACE CONDITION DETECTED!\n");
 				printf("Run the program multiple times to observe.\n");
 			}
-			return 0;
 		}
 		else if(choice == 2){
 			printf("=== Phase 4: Deadlock Resolution ===\n");
@@ -235,7 +234,6 @@ int main() {
 				printf("RACE CONDITION DETECTED!\n");
 				printf("Run the program multiple times to observe.\n");
 			}
-			return 0;
 		}
 		else if(choice == 3) {
 			exit = 0;
@@ -244,4 +242,5 @@ int main() {
 			printf("Invalid choice, try again.\n");
 		}
 	}
+	return 0;
 }
