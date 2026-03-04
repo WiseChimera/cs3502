@@ -8,10 +8,10 @@ Darren Ni
 #include <unistd.h>
 
 // Configuration - experiment with different values!
-#define NUM_ACCOUNTS 4
-#define NUM_THREADS 6
-#define TRANSACTIONS_PER_THREAD 10
-#define INITIAL_BALANCE 1000.0
+#define NUM_ACCOUNTS 5
+#define NUM_THREADS 8
+#define TRANSACTIONS_PER_THREAD 15
+#define INITIAL_BALANCE 2000.0
 
 // Updated Account structure with mutex (GIVEN)
 typedef struct {
@@ -50,12 +50,12 @@ void safe_transfer_ordered(int to_id, int from_id, double amount) {
 void safe_transfer_trylock(int to_id, int from_id, double amount) {
 	while(1) {
 		if(pthread_mutex_trylock(&accounts[from_id].lock) != 0) {
-			usleep(200); // random backoff time between 0-499
+			usleep(rand() % 500); // random backoff time between 0-499
 			continue;
 		}
 		if(pthread_mutex_trylock(&accounts[to_id].lock) != 0) {
 			pthread_mutex_unlock(&accounts[from_id].lock);
-			usleep(200); // random backoff time between 0-499
+			usleep(rand() % 500); // random backoff time between 0-499
 			continue;
 		}
 		break;
@@ -71,26 +71,46 @@ void safe_transfer_trylock(int to_id, int from_id, double amount) {
 
 // Implement the thread function, Reference: OSTEP Ch. 27 for pthread function signature, 
 // Appendix A.2 for void* parameter explanation
-void* teller_thread(void* arg) {
+// tests lock ordering
+void* teller_thread1(void* arg) {
 	int teller_id = *(int*)arg; // GIVEN: Extract thread ID
 	// Initialize thread-safe random seed, Reference: Section 7.2 "Random Numbers per Thread"
 	unsigned int seed = time(NULL) ^ pthread_self();
 	for (int i = 0; i < TRANSACTIONS_PER_THREAD; i++) {
 		// Randomly select an account (0 to NUM_ACCOUNTS-1)
-		int account_idx = rand_r(&seed) % NUM_ACCOUNTS; // random account_id x selected
-		int account_idy;
-		do { // ensures that account_idy != account_idx
-    		account_idy = rand_r(&seed) % NUM_ACCOUNTS;
-		} while (account_idy == account_idx);
+		int account_idTo = rand_r(&seed) % NUM_ACCOUNTS; // random account_id x selected
+		int account_idFrom;
+		do { // ensures that account_idFrom != account_idTo
+    		account_idFrom = rand_r(&seed) % NUM_ACCOUNTS;
+		} while (account_idFrom == account_idTo);
 		// Generate random amount (1-100)
 		double amount = rand_r(&seed) % 100 + 1;
-		// Call appropriate function- safe_transfer_ordered(), safe_transfer_timeout(), or safe_transfer_trylock()-- replace here
-		safe_transfer_ordered(account_idx, account_idy, amount);
-		printf("Teller %d: Transferred $%.2f to Account %d from Account %d\n", teller_id, amount, account_idx, account_idy);
+		// Call appropriate function- safe_transfer_ordered() 
+		safe_transfer_ordered(account_idTo, account_idFrom, amount);
+		printf("Teller %d: Transferred $%.2f to Account %d from Account %d\n", teller_id, amount, account_idTo, account_idFrom);
 	}
 	return NULL;
 }
-
+// tests trylock
+void* teller_thread2(void* arg) {
+	int teller_id = *(int*)arg; // GIVEN: Extract thread ID
+	// Initialize thread-safe random seed, Reference: Section 7.2 "Random Numbers per Thread"
+	unsigned int seed = time(NULL) ^ pthread_self();
+	for (int i = 0; i < TRANSACTIONS_PER_THREAD; i++) {
+		// Randomly select an account (0 to NUM_ACCOUNTS-1)
+		int account_idTo = rand_r(&seed) % NUM_ACCOUNTS; // random account_id x selected
+		int account_idFrom;
+		do { // ensures that account_idFrom != account_idTo
+    		account_idFrom = rand_r(&seed) % NUM_ACCOUNTS;
+		} while (account_idFrom == account_idTo);
+		// Generate random amount (1-100)
+		double amount = rand_r(&seed) % 100 + 1;
+		// Call appropriate function- safe_transfer_trylock()
+		safe_transfer_trylock(account_idTo, account_idFrom, amount);
+		printf("Teller %d: Transferred $%.2f to Account %d from Account %d\n", teller_id, amount, account_idTo, account_idFrom);
+	}
+	return NULL;
+}
 // Add mutex cleanup in main(), Reference: man pthread_mutex_destroy
 // Important: Destroy mutexes AFTER all threads complete!
 void cleanup_mutexes() {
@@ -111,51 +131,117 @@ void initialize_accounts() {
 }
 
 int main() {
-	printf("=== Phase 4: Deadlock Resolution ===\n\n");
-	// Initialize all accounts
-	initialize_accounts();
-	// Display initial state (GIVEN)
-	printf("Initial State:\n");
-	for (int i = 0; i < NUM_ACCOUNTS; i++) {
-		printf(" Account %d: $%.2f\n", i, accounts[i].balance);
+	int choice;
+	int exit = 1;
+	while(exit) {
+		printf("\n--- Menu ---");
+		printf("\n1. Test lock ordering\n2. Test trylock with backoff\n3. Exit\nChoose an option: ");
+		choice = scanf("%d");
+		if(choice == 1) {
+			printf("=== Phase 4: Deadlock Resolution ===\n");
+			printf("=== Testing lock ordering ===\n\n");
+			// Initialize all accounts
+			initialize_accounts();
+			// Display initial state (GIVEN)
+			printf("Initial State:\n");
+			for (int i = 0; i < NUM_ACCOUNTS; i++) {
+				printf(" Account %d: $%.2f\n", i, accounts[i].balance);
+			}
+			// Calculate expected final balance; Total money in system should remain constant!
+			double expected_total = NUM_ACCOUNTS * INITIAL_BALANCE; 
+			printf("\nExpected total: $%.2f\n\n", expected_total);
+			// Create thread and thread ID arrays, Reference: man pthread_create for pthread_t type
+			pthread_t threads[NUM_THREADS];
+			int thread_ids[NUM_THREADS]; // Separate array for IDs
+			struct timespec start, end;
+			// start clock for performance measuring
+			clock_gettime(CLOCK_MONOTONIC, &start);
+			// Create all threads, Reference: man pthread_create
+			for (int i = 0; i < NUM_THREADS; i++) {
+				thread_ids[i] = i; // Store ID persistently
+				pthread_create(&threads[i], NULL, teller_thread1, & thread_ids[i]);
+			}
+			// Wait for all threads to complete, Reference: man pthread_join
+			for (int i = 0; i < NUM_THREADS; i++) {
+				pthread_join(threads[i], NULL);
+			}
+			// end clock
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+			cleanup_mutexes();
+			// Calculate and display results
+			printf("\n=== Final Results ===\n");
+			double actual_total = 0.0;
+			for (int i = 0; i < NUM_ACCOUNTS; i++) {
+				printf("Account %d: $%.2f (%d transactions)\n", i, accounts[i].balance, accounts[i].transaction_count);
+				actual_total += accounts[i].balance;
+			}
+			printf("\nExpected total: $%.2f\n", expected_total);
+			printf("Actual total: $%.2f\n", actual_total);
+			printf("Difference: $%.2f\n", actual_total - expected_total);
+			printf("Time taken: %.4f seconds\n", elapsed);
+			// Add race condition detection message; Instruct user to run multiple times
+			if(expected_total != actual_total) {
+				printf("RACE CONDITION DETECTED!\n");
+				printf("Run the program multiple times to observe.\n");
+			}
+			return 0;
+		}
+		else if(choice == 2){
+			printf("=== Phase 4: Deadlock Resolution ===\n");
+			printf("=== Testing trylock with backoff ===\n\n");
+			// Initialize all accounts
+			initialize_accounts();
+			// Display initial state (GIVEN)
+			printf("Initial State:\n");
+			for (int i = 0; i < NUM_ACCOUNTS; i++) {
+				printf(" Account %d: $%.2f\n", i, accounts[i].balance);
+			}
+			// Calculate expected final balance; Total money in system should remain constant!
+			double expected_total = NUM_ACCOUNTS * INITIAL_BALANCE; 
+			printf("\nExpected total: $%.2f\n\n", expected_total);
+			// Create thread and thread ID arrays, Reference: man pthread_create for pthread_t type
+			pthread_t threads[NUM_THREADS];
+			int thread_ids[NUM_THREADS]; // Separate array for IDs
+			struct timespec start, end;
+			// start clock for performance measuring
+			clock_gettime(CLOCK_MONOTONIC, &start);
+			// Create all threads, Reference: man pthread_create
+			for (int i = 0; i < NUM_THREADS; i++) {
+				thread_ids[i] = i; // Store ID persistently
+				pthread_create(&threads[i], NULL, teller_thread2, & thread_ids[i]);
+			}
+			// Wait for all threads to complete, Reference: man pthread_join
+			for (int i = 0; i < NUM_THREADS; i++) {
+				pthread_join(threads[i], NULL);
+			}
+			// end clock
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+			cleanup_mutexes();
+			// Calculate and display results
+			printf("\n=== Final Results ===\n");
+			double actual_total = 0.0;
+			for (int i = 0; i < NUM_ACCOUNTS; i++) {
+				printf("Account %d: $%.2f (%d transactions)\n", i, accounts[i].balance, accounts[i].transaction_count);
+				actual_total += accounts[i].balance;
+			}
+			printf("\nExpected total: $%.2f\n", expected_total);
+			printf("Actual total: $%.2f\n", actual_total);
+			printf("Difference: $%.2f\n", actual_total - expected_total);
+			printf("Time taken: %.4f seconds\n", elapsed);
+			// Add race condition detection message; Instruct user to run multiple times
+			if(expected_total != actual_total) {
+				printf("RACE CONDITION DETECTED!\n");
+				printf("Run the program multiple times to observe.\n");
+			}
+			return 0;
+		}
+		else if(choice == 3) {
+			exit = 0;
+		}
+		else {
+			printf("Invalid choice, try again.\n");
+		}
 	}
-	// Calculate expected final balance; Total money in system should remain constant!
-	double expected_total = NUM_ACCOUNTS * INITIAL_BALANCE; 
-	printf("\nExpected total: $%.2f\n\n", expected_total);
-	// Create thread and thread ID arrays, Reference: man pthread_create for pthread_t type
-	pthread_t threads[NUM_THREADS];
-	int thread_ids[NUM_THREADS]; // Separate array for IDs
-    struct timespec start, end;
-	// start clock for performance measuring
-    clock_gettime(CLOCK_MONOTONIC, &start);
-	// Create all threads, Reference: man pthread_create
-	for (int i = 0; i < NUM_THREADS; i++) {
-		thread_ids[i] = i; // Store ID persistently
-		pthread_create(&threads[i], NULL, teller_thread, & thread_ids[i]);
-	}
-	// Wait for all threads to complete, Reference: man pthread_join
-	for (int i = 0; i < NUM_THREADS; i++) {
-		pthread_join(threads[i], NULL);
-	}
-	// end clock
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    cleanup_mutexes();
-	// Calculate and display results
-	printf("\n=== Final Results ===\n");
-	double actual_total = 0.0;
-	for (int i = 0; i < NUM_ACCOUNTS; i++) {
-		printf("Account %d: $%.2f (%d transactions)\n", i, accounts[i].balance, accounts[i].transaction_count);
-		actual_total += accounts[i].balance;
-	}
-	printf("\nExpected total: $%.2f\n", expected_total);
-	printf("Actual total: $%.2f\n", actual_total);
-	printf("Difference: $%.2f\n", actual_total - expected_total);
-    printf("Time taken: %.4f seconds\n", elapsed);
-	// Add race condition detection message; Instruct user to run multiple times
-	if(expected_total != actual_total) {
-		printf("RACE CONDITION DETECTED!\n");
-		printf("Run the program multiple times to observe.\n");
-	}
-	return 0;
 }
