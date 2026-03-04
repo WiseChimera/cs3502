@@ -45,14 +45,27 @@ void safe_transfer_ordered(int to_id, int from_id, double amount) {
 	pthread_mutex_unlock(&accounts[first].lock);
 }
 
-// STRATEGY 2: Timeout Mechanism
-void safe_transfer_timeout(from, to, amount) {
-	
-}
 
 // STRATEGY 3: Try-Lock with Backoff
-void safe_transfer_trylock(from, to, amount) {
-
+void safe_transfer_trylock(int to_id, int from_id, double amount) {
+	while(1) {
+		if(pthread_mutex_trylock(&accounts[from_id].lock) != 0) {
+			usleep(200); // random backoff time between 0-499
+			continue;
+		}
+		if(pthread_mutex_trylock(&accounts[to_id].lock) != 0) {
+			pthread_mutex_unlock(&accounts[from_id].lock);
+			usleep(200); // random backoff time between 0-499
+			continue;
+		}
+		break;
+	}
+	accounts[from_id].balance -= amount;
+	accounts[from_id].transaction_count++;
+	accounts[to_id].balance += amount;
+	accounts[to_id].transaction_count++;
+	pthread_mutex_unlock(&accounts[to_id].lock);
+	pthread_mutex_unlock(&accounts[from_id].lock);
 }
 
 
@@ -98,7 +111,7 @@ void initialize_accounts() {
 }
 
 int main() {
-	printf("=== Phase 2: Mutex Protection Demo ===\n\n");
+	printf("=== Phase 4: Deadlock Resolution ===\n\n");
 	// Initialize all accounts
 	initialize_accounts();
 	// Display initial state (GIVEN)
