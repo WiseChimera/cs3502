@@ -170,7 +170,7 @@ int main() {
 			double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 			cleanup_mutexes();
 			// Calculate and display results
-			printf("\n=== Final Results ===\n");
+			printf("\n=== Final Results (Lock Ordering) ===\n");
 			double actual_total = 0.0;
 			for (int i = 0; i < NUM_ACCOUNTS; i++) {
 				printf("Account %d: $%.2f (%d transactions)\n", i, accounts[i].balance, accounts[i].transaction_count);
@@ -219,7 +219,7 @@ int main() {
 			double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 			cleanup_mutexes();
 			// Calculate and display results
-			printf("\n=== Final Results ===\n");
+			printf("\n=== Final Results (Trylock with backoff) ===\n");
 			double actual_total = 0.0;
 			for (int i = 0; i < NUM_ACCOUNTS; i++) {
 				printf("Account %d: $%.2f (%d transactions)\n", i, accounts[i].balance, accounts[i].transaction_count);
