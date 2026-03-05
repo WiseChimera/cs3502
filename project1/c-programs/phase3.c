@@ -31,17 +31,17 @@ Account accounts[NUM_ACCOUNTS];
 void transfer_deadlock(int thread_id, int to_id, int from_id, double amount) {
     // Lock source account
     pthread_mutex_lock(&accounts[from_id].lock);
-	printf("Thread %ld: Locked account %d\n", thread_id, from_id);
+	printf("Thread %d: Locked account %d\n", thread_id, from_id);
 	// Simulate processing delay
 	usleep(100);
 	// Try to lock destination account
-	printf("Thread %ld: Waiting for account %d\n", thread_id, to_id);
+	printf("Thread %d: Waiting for account %d\n", thread_id, to_id);
     pthread_mutex_lock(&accounts[to_id].lock);
     // ===== CRITICAL SECTION =====
 	// Transfer from FromAccount to ToAccount(never reached if deadlocked)
 	// Checks if the source account has sufficient funds
 	if(accounts[from_id].balance < amount) {
-		printf("Thread %ld: Account %d has insufficient funds.\n", thread_id, from_id);
+		printf("Thread %d: Account %d has insufficient funds.\n", thread_id, from_id);
 		pthread_mutex_unlock(&accounts[to_id].lock);
 		pthread_mutex_unlock(&accounts[from_id].lock);
 		return;
