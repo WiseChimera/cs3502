@@ -47,16 +47,16 @@ void* teller_thread(void* arg) {
 	for (int i = 0; i < TRANSACTIONS_PER_THREAD; i++) {
 		// TODO 2b: Randomly select an account (0 to NUM_ACCOUNTS-1)
 		// Hint: Use rand_r(&seed) % NUM_ACCOUNTS
-		int account_idx = rand_r(&seed) % NUM_ACCOUNTS; // random account_id x selected
-		int account_idy;
-		do { // ensures that account_idy != account_idx
-    		account_idy = rand_r(&seed) % NUM_ACCOUNTS;
-		} while (account_idy == account_idx);
+		int account_idTo = rand_r(&seed) % NUM_ACCOUNTS; // random account_id x selected
+		int account_idFrom;
+		do { // ensures that account_idFrom != account_idTo
+    		account_idFrom = rand_r(&seed) % NUM_ACCOUNTS;
+		} while (account_idFrom == account_idTo);
 		// TODO 2c: Generate random amount (1-100)
 		double amount = rand_r(&seed) % 100 + 1;
 		// TODO 2e: Call appropriate function
-		transfer_unsafe(account_idx, account_idy, amount);
-		printf("Teller %d: Transferred $%.2f to Account %d from Account %d\n", teller_id, amount, account_idx, account_idy);
+		transfer_unsafe(account_idTo, account_idFrom, amount);
+		printf("Teller %d: Transferred $%.2f to Account %d from Account %d\n", teller_id, amount, account_idTo, account_idFrom);
 	}
 	return NULL;
 }
@@ -89,18 +89,20 @@ int main() {
 	// TODO 3d: Create all threads
 	// Reference: man pthread_create
 	// Caution: See Appendix A.2 warning about passing &i in loop!
+	struct timespec start, end;
+	// start clock for performance measuring
+    clock_gettime(CLOCK_MONOTONIC, &start);
 	for (int i = 0; i < NUM_THREADS; i++) {
 		thread_ids[i] = i; // GIVEN: Store ID persistently
-		// YOUR pthread_create CODE HERE
-		// Format: pthread_create(&threads[i], NULL, teller_thread, & thread_ids[i]);
 		pthread_create(&threads[i], NULL, teller_thread, & thread_ids[i]);
 	}
 	// TODO 3e: Wait for all threads to complete
 	// Reference: man pthread_join
 	for (int i = 0; i < NUM_THREADS; i++) {
-		// YOUR pthread_join CODE HERE
 		pthread_join(threads[i], NULL);
 	}
+	clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 	// TODO 3f: Calculate and display results
 	printf("\n=== Final Results ===\n");
 	double actual_total = 0.0;
@@ -111,6 +113,7 @@ int main() {
 	printf("\nExpected total: $%.2f\n", expected_total);
 	printf("Actual total: $%.2f\n", actual_total);
 	printf("Difference: $%.2f\n", actual_total - expected_total);
+    printf("Time taken: %.4f seconds\n", elapsed);
 	// TODO 3g: Add race condition detection message
 	// If expected != actual, print "RACE CONDITION DETECTED!"
 	// Instruct user to run multiple times
