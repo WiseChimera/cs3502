@@ -8,10 +8,10 @@ Darren Ni
 #include <unistd.h>
 
 // Configuration - experiment with different values!
-#define NUM_ACCOUNTS 5
-#define NUM_THREADS 8
-#define TRANSACTIONS_PER_THREAD 15
-#define INITIAL_BALANCE 2000.0
+#define NUM_ACCOUNTS 25
+#define NUM_THREADS 1000
+#define TRANSACTIONS_PER_THREAD 100
+#define INITIAL_BALANCE 10000.0
 
 // Updated Account structure with mutex (GIVEN)
 typedef struct {
@@ -31,10 +31,14 @@ void safe_transfer_ordered(int to_id, int from_id, double amount) {
 	int first = (from_id < to_id) ? from_id : to_id;
 	int second = (from_id > to_id) ? from_id : to_id;
 	pthread_mutex_lock(&accounts[first].lock);
-	// Simulate processing delay
-	usleep(100);
 	pthread_mutex_lock(&accounts[second].lock);
 	// ===== CRITICAL SECTION =====
+	if(accounts[from_id].balance < amount) {
+		printf("Account %d has insufficient funds.\n", from_id);
+		pthread_mutex_unlock(&accounts[to_id].lock);
+		pthread_mutex_unlock(&accounts[from_id].lock);
+		return;
+	}
 	// tranfers money from the fromAccount to toAccount 
 	accounts[from_id].balance -= amount;
 	accounts[from_id].transaction_count++;
@@ -50,15 +54,21 @@ void safe_transfer_ordered(int to_id, int from_id, double amount) {
 void safe_transfer_trylock(int to_id, int from_id, double amount) {
 	while(1) {
 		if(pthread_mutex_trylock(&accounts[from_id].lock) != 0) {
-			usleep(rand() % 500); // random backoff time between 0-499
+			usleep(rand() % 100); // random backoff time between 0-99
 			continue;
 		}
 		if(pthread_mutex_trylock(&accounts[to_id].lock) != 0) {
 			pthread_mutex_unlock(&accounts[from_id].lock);
-			usleep(rand() % 500); // random backoff time between 0-499
+			usleep(rand() % 100); // random backoff time between 0-99
 			continue;
 		}
 		break;
+	}
+	if(accounts[from_id].balance < amount) {
+		printf("Account %d has insufficient funds.\n", from_id);
+		pthread_mutex_unlock(&accounts[to_id].lock);
+		pthread_mutex_unlock(&accounts[from_id].lock);
+		return;
 	}
 	accounts[from_id].balance -= amount;
 	accounts[from_id].transaction_count++;
