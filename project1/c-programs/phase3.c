@@ -120,7 +120,7 @@ int main() {
 		int count_1 =  accounts[0].transaction_count;
 		int count_2 =  accounts[1].transaction_count;
 		// no deadlock if transaction count incremented on both accounts
-		if(count_1 + count_2 >= 2) {
+		if(count_1 + count_2 >= 4) {
 			printf("\n=== Transaction successfully completed ===\n");
 			break;
 		}
