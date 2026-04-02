@@ -2,7 +2,7 @@
 
 This project provides a Windows Forms application that demonstrates common CPU scheduling algorithms through an interactive graphical interface. Each algorithm prompts for basic input and displays the resulting waiting or turnaround times using message boxes and on-screen tables.
 
-**Fork maintained by Chris Regan** - Original creator: Francis (used with permission)
+Darren Ni's Clone of - **Fork maintained by Chris Regan** - Original creator: Francis (used with permission)
 
 ## Project status
 
@@ -10,12 +10,14 @@ The simulator is functional but still a work in progress. Currently the followin
 
 | Algorithm | Method | Notes |
 |-----------|--------|-------|
-| First Come First Serve | `Algorithms.RunFirstComeFirstServe` | Processes are executed in order of arrival. |
-| Shortest Job First | `Algorithms.RunShortestJobFirst` | Jobs are sorted by burst time before execution. |
-| Priority Scheduling | `Algorithms.RunPriorityScheduling` | User supplies a priority value for each job. |
-| Round Robin | `Algorithms.RunRoundRobin` | Requires a quantum time parameter. |
+| First Come First Serve | `CpuSchedulerForm.RunFCFSAlgorithm` | Processes are executed in order of arrival. |
+| Shortest Job First | `CpuSchedulerForm.RunSJFAlgorithm` | Jobs are sorted by burst time before execution. |
+| Priority Scheduling | `CpuSchedulerForm.RunPriorityAlgorithm` | User supplies a priority value for each job. |
+| Round Robin | `CpuSchedulerForm.RunRoundRobinAlgorithm` | Requires a quantum time parameter. |
+| Shortest Remaining Time First | `CpuSchedulerForm.RunSRTFAlgorithm` | Checks for processes with shortest remaining burst. |
+| Highest Response Ratio Next | `CpuSchedulerForm.RunHRRNAlgorithm` | Requires the calculation of the Response Ratio. |
 
-Additional algorithms can easily be added by extending `Algorithms.cs`.
+Additional algorithms can easily be added by extending `CpuSchedulerForm.cs`.
 
 ## Requirements
 
