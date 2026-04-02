@@ -1,0 +1,63 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio files
+*.suo
+*.user
+*.sln.docstates
+*.userprefs
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Visual Studio cache files
+*.VisualState.xml
+TestResult.xml
+
+# VS Code files
+.vscode/
+
+# Claude Code files (local only)
+.claude/
+
+# Rider
+.idea/
+
+# User-specific files
+*.rsuser
+*.userosscache
+
+# Windows thumbnail cache files
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Packages
+*.nupkg
+*.snupkg
+packages/
+
+# JetBrains Rider
+*.sln.iml
+
+# Microsoft Fakes
+FakesAssemblies/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Misc files
+CS_3502_OS_P2_CPU_Scheduler.pdf
