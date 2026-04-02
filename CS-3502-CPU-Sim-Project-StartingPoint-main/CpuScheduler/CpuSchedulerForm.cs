@@ -257,8 +257,9 @@ Instructions:
             {
                 var startTime = Math.Max(currentTime, process.ArrivalTime);
                 var finishTime = startTime + process.BurstTime;
-                var waitingTime = startTime - process.ArrivalTime;
                 var turnaroundTime = finishTime - process.ArrivalTime;
+                var waitingTime = turnaroundTime - process.BurstTime;
+                
                 
                 results.Add(new SchedulingResult
                 {
@@ -304,8 +305,8 @@ Instructions:
                 
                 var startTime = Math.Max(currentTime, nextProcess.ArrivalTime);
                 var finishTime = startTime + nextProcess.BurstTime;
-                var waitingTime = startTime - nextProcess.ArrivalTime;
                 var turnaroundTime = finishTime - nextProcess.ArrivalTime;
+                var waitingTime = turnaroundTime - nextProcess.BurstTime;
                 
                 results.Add(new SchedulingResult
                 {
@@ -352,8 +353,9 @@ Instructions:
                 
                 var startTime = Math.Max(currentTime, nextProcess.ArrivalTime);
                 var finishTime = startTime + nextProcess.BurstTime;
-                var waitingTime = startTime - nextProcess.ArrivalTime;
                 var turnaroundTime = finishTime - nextProcess.ArrivalTime;
+                var waitingTime = turnaroundTime - nextProcess.BurstTime;
+                
                 
                 results.Add(new SchedulingResult
                 {
@@ -561,7 +563,7 @@ Instructions:
                 foreach (var process in availableProcesses)
                 {
                     int waitingTime = currentTime - process.ArrivalTime;
-                    // Gets the highest Response Ratio from availableProcesses, and its processID
+                    // Gets the highest Response Ratio from availableProcesses
                     double RR = (waitingTime + process.BurstTime) / (double)process.BurstTime;
                     // selects nextProcess for highestRR, tiebreakers: arrival time & processID if arrival time is the same
                     if(nextProcess == null || RR > highestRR || (RR == highestRR && process.ArrivalTime < nextProcess.ArrivalTime) || 
@@ -575,8 +577,8 @@ Instructions:
 
                 var startTime = Math.Max(currentTime, nextProcess.ArrivalTime);
                 var finishTime = startTime + nextProcess.BurstTime;
-                var waitingTimeRes = startTime - nextProcess.ArrivalTime;
                 var turnaroundTime = finishTime - nextProcess.ArrivalTime;
+                var waitingTimeRes = turnaroundTime - nextProcess.BurstTime;
                 results.Add(new SchedulingResult
                 {
                     ProcessID = nextProcess.ProcessID,
