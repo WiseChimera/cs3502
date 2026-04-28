@@ -1,0 +1,32 @@
+#compiled files
+*.o
+*.out
+
+# Executables
+FileOperations
+main
+gui
+
+#Log files
+*.log
+
+#txt files
+*.txt
+
+# Editor backups
+*~
+*.swp
+
+# Build directories
+build/
+bin/
+
+# GTK / pkg-config temp artifacts (rare, but safe)
+*.so
+*.a
+
+# Debug symbols
+*.dSYM/
+
+# Logs
+*.log
