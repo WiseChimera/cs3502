@@ -1,32 +1,32 @@
-#compiled files
+# ---------- Build outputs ----------
 *.o
 *.out
+*.a
+*.so
+filemanager
 
-# Executables
-FileOperations
-main
-gui
-
-#Log files
-*.log
-
-#txt files
-*.txt
-
-# Editor backups
-*~
-*.swp
-
-# Build directories
+# ---------- Build folders ----------
 build/
 bin/
+obj/
 
-# GTK / pkg-config temp artifacts (rare, but safe)
-*.so
-*.a
+# ---------- IDE / editor files ----------
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Debug symbols
-*.dSYM/
+# ---------- Linux / system ----------
+*~
+.DS_Store
 
-# Logs
-*.log
+# ---------- GTK / compilation artifacts ----------
+*.gch
+
+# ---------- Debug files ----------
+core
+core.*
+
+# ---------- Other ----------
+*.txt
+TestDirectory

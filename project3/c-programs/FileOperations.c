@@ -10,10 +10,12 @@
 #include "FileOperations.h"
 
 //create file
-int create_file(const char *path) {
+int create_file(const char *path) 
+{
     // O_CREAT -> Create file if it doesn't exist, O_EXCL -> Fail if file exists
     int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644);
-    if(fd == -1) {
+    if(fd == -1) 
+    {
         if(errno = EEXIST) 
             printf("Error: File already exists.\n");
         else if(errno = EEXIST) 
@@ -26,8 +28,10 @@ int create_file(const char *path) {
 }
 
 // create directory
-int create_directory(const char *path) {
-    if(mkdir(path, 0755) == -1) {
+int create_directory(const char *path) 
+{
+    if(mkdir(path, 0755) == -1) 
+    {
         if(errno = EEXIST) 
             printf("Error: Directory already exists.\n");
         else if(errno = EEXIST) 
@@ -40,11 +44,13 @@ int create_directory(const char *path) {
 }
 
 // read file
-char *read_file(const char *path) {
+char *read_file(const char *path) 
+{
     // Open file in read-only
     int fd = open(path, O_RDONLY);
-    if(fd == -1) {
-        if(errno = ENOENT)
+    if(fd == -1) 
+    {
+        if(errno == ENOENT)
             printf("Error: File not found.\n");
         else
             printf("Error: %s\n", strerror(errno));
@@ -55,7 +61,8 @@ char *read_file(const char *path) {
     // reads up to sizeof(temp)-1 bytes from the file
     ssize_t bytes = read(fd, temp, sizeof(temp) - 1);
     // check if operation (read) failed
-    if(bytes == -1) {
+    if(bytes == -1) 
+    {
         printf("Error reading file.\n");
         close(fd);
         return NULL;
@@ -66,9 +73,8 @@ char *read_file(const char *path) {
     // Allocate memory for returned string and +1 for null terminator
     char *result = malloc(bytes + 1);
     // check if memory allocation failed
-    if(!result) {
+    if(!result)
         return NULL;
-    }
     // copy data from temp to result
     strcpy(result, temp);
     // note to self: remember to free() the string (malloc)
@@ -76,7 +82,8 @@ char *read_file(const char *path) {
 }
 
 // update file
-int update_file(const char *path, const char *content) {
+int update_file(const char *path, const char *content) 
+{
     // O_WRONLY -> Write only, O_TRUNC -> overwrite existing file contents
     int fd = open(path, O_WRONLY | O_TRUNC);
     if (fd == -1)
@@ -145,51 +152,4 @@ int rename_item(const char *old_path, const char *new_path) {
         return -1;
     }
     return 0;
-}
-
-int navigate_directory(const char *path)
-{
-    DIR *dir = opendir(path);
-
-    if (!dir)
-    {
-        printf("Error: Cannot open directory.\n");
-        return -1;
-    }
-
-    struct dirent *entry;
-    struct stat st;
-    char full_path[1024];
-
-    printf("Listing: %s\n\n", path);
-    
-    // browse directory in list view
-    while ((entry = readdir(dir)) != NULL)
-    {
-        // Skip current and parent directory entries
-        if (strcmp(entry->d_name, ".") == 0 ||
-            strcmp(entry->d_name, "..") == 0)
-            continue;
-
-        // Build full path for stat()
-        snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
-
-        // Get file metadata
-        if (stat(full_path, &st) == -1)
-            continue;
-
-        // Format output based on type
-        if (S_ISDIR(st.st_mode))
-            printf("[DIR ] %s\n", entry->d_name);
-        else
-            printf("[FILE] %s\n", entry->d_name);
-    }
-
-    closedir(dir);
-    return 0;
-}
-
-// checks if file is editable, only .txt, .c, .h would be editable in the GUI (at least for my project)
-int isTxt(const char *path) {
-
 }

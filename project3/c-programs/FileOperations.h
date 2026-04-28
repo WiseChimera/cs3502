@@ -1,9 +1,9 @@
-#ifndef FILE_MANAGER.H
-#define FILE_MANAGER.H
+#ifndef FILEOPERATIONS_H
+#define FILEOPERATIONS_H
 
 int create_file(const char *path);
 int create_directory(const char *path);
-int read_file(const char *path);
+char *read_file(const char *path);
 int update_file(const char *path, const char *content);
 int delete_file(const char *path);
 int delete_directory(const char *path);
