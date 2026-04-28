@@ -27,6 +27,3 @@ obj/
 core
 core.*
 
-# ---------- Other ----------
-*.txt
-TestDirectory
