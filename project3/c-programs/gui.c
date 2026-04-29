@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <errno.h>
 #include "FileOperations.h"
 
 /* ---------- UI ---------- */
@@ -47,15 +47,11 @@ void update_path_display()
 char *show_input_dialog(const char *title)
 {
     GtkWidget *dialog = gtk_dialog_new_with_buttons(title, NULL, GTK_DIALOG_MODAL,"OK", GTK_RESPONSE_OK,"Cancel", GTK_RESPONSE_CANCEL,NULL);
-
     GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     GtkWidget *entry = gtk_entry_new();
-
     gtk_container_add(GTK_CONTAINER(content), entry);
     gtk_widget_show_all(dialog);
-
     char *result = NULL;
-
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
     {
         const char *text = gtk_entry_get_text(GTK_ENTRY(entry));
@@ -67,6 +63,32 @@ char *show_input_dialog(const char *title)
     return result;
 }
 
+/* ---------- ERROR POP UP ---------- */
+void show_error_popup(const char *msg)
+{
+    GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "%s", msg);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+
+/* ---------- MAPS ERROR MSG ---------- */
+const char *get_error_message()
+{
+    switch (errno)
+    {
+        case EEXIST:
+            return "File or directory already exists";
+        case ENOENT:
+            return "File or directory not found";
+        case EACCES:
+            return "Permission denied";
+        case ENOTEMPTY:
+            return "Directory is not empty";
+        default:
+            return strerror(errno);
+    }
+}
+
 /* ---------- FILE OPEN ---------- */
 void open_file(const char *path)
 {
@@ -74,16 +96,13 @@ void open_file(const char *path)
 
     if (!content)
     {
-        set_error("Cannot read file");
+        show_error_popup(get_error_message());
         return;
     }
 
     GtkTextBuffer *tb = gtk_text_view_get_buffer(GTK_TEXT_VIEW(file_view));
-
     gtk_text_buffer_set_text(tb, content, -1);
-
-    free(content);
-
+    free(content); // free malloc
     set_status("File loaded");
 }
 
@@ -91,9 +110,7 @@ void open_file(const char *path)
 void on_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer user_data)
 {
     selected_item = g_object_get_data(G_OBJECT(row), "item");
-
     if (!selected_item) return;
-
     if (selected_item->is_dir)
     {
         strcpy(current_path, selected_item->full_path);
@@ -113,18 +130,15 @@ void refresh_file_list()
     for (GList *i = children; i; i = i->next)
         gtk_widget_destroy(GTK_WIDGET(i->data));
     g_list_free(children);
-
     DIR *dir = opendir(current_path);
     if (!dir)
     {
-        set_error("Cannot open directory");
+        show_error_popup(get_error_message());
         return;
     }
-
     struct dirent *entry;
     struct stat st;
     char full[1024];
-
     while ((entry = readdir(dir)))
     {
         if (!strcmp(entry->d_name, ".") ||
@@ -144,16 +158,11 @@ void refresh_file_list()
         GtkWidget *label = gtk_label_new(entry->d_name);
 
         gtk_container_add(GTK_CONTAINER(row), label);
-
         g_object_set_data(G_OBJECT(row), "item", data);
-
         gtk_list_box_insert(GTK_LIST_BOX(file_list), row, -1);
     }
-
     closedir(dir);
-
     gtk_widget_show_all(file_list);
-
     update_path_display();
     set_status("Loaded");
 }
@@ -164,14 +173,13 @@ void on_create_file()
 {
     char *name = show_input_dialog("Enter file name");
     if (!name) return;
-
     char path[1024];
     snprintf(path, sizeof(path), "%s/%s", current_path, name);
 
     if (create_file(path) == 0)
         set_status("File created");
     else
-        set_error("Create file failed");
+        show_error_popup(get_error_message());
 
     free(name);
     refresh_file_list();
@@ -188,7 +196,7 @@ void on_create_folder()
     if (create_directory(path) == 0)
         set_status("Folder created");
     else
-        set_error("Create folder failed");
+        show_error_popup(get_error_message());
 
     free(name);
     refresh_file_list();
@@ -207,7 +215,7 @@ void on_delete()
     if (res == 0)
         set_status("Deleted");
     else
-        set_error("Delete failed");
+        show_error_popup(get_error_message());
 
     refresh_file_list();
 }
@@ -229,7 +237,7 @@ void on_rename()
     if (rename_item(selected_item->full_path, new_path) == 0)
         set_status("Renamed");
     else
-        set_error("Rename failed");
+        show_error_popup(get_error_message());
 
     free(name);
     refresh_file_list();
@@ -328,8 +336,7 @@ int gui_start(int argc, char **argv)
 {
     GtkApplication *app;
 
-    app = gtk_application_new("com.filemanager.app",
-                              G_APPLICATION_FLAGS_NONE);
+    app = gtk_application_new("com.filemanager.app", G_APPLICATION_FLAGS_NONE);
 
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
 
