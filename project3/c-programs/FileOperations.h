@@ -8,5 +8,6 @@ int update_file(const char *path, const char *content);
 int delete_file(const char *path);
 int delete_directory(const char *path);
 int rename_item(const char *old_path, const char *new_path);
+int navigate(const char *path);
 
 #endif

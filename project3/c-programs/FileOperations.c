@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <dirent.h>
+#include <sys/file.h>
 #include "FileOperations.h"
 
 //create file
@@ -16,7 +17,7 @@ int create_file(const char *path)
     int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644);
     if(fd == -1) 
     {
-        return -1; // errno already set
+        return -1; 
     }
 
     close(fd);
@@ -28,7 +29,7 @@ int create_directory(const char *path)
 {
     if(mkdir(path, 0755) == -1) 
     {
-        return -1; // errno already set
+        return -1; 
     }
     return 0;
 }
@@ -42,35 +43,58 @@ char *read_file(const char *path)
     {
         return NULL; // errno already set
     }
-
-    // temp buffer to store file data
-    char temp[4096];
-
-    // reads up to sizeof(temp)-1 bytes from the file
-    ssize_t bytes = read(fd, temp, sizeof(temp) - 1);
-
-    // check if operation (read) failed
-    if(bytes == -1) 
+    // file lock (non-blocking) for reading-- multiple readers allowed
+    if (flock(fd, LOCK_SH | LOCK_NB) == -1) {
+        close(fd);
+        errno = EBUSY;
+        return NULL;
+    }
+    struct stat st;
+    // get file info (size, etc.)
+    if (fstat(fd, &st) == -1)
     {
+        flock(fd, LOCK_UN);
         close(fd);
         return NULL;
     }
-
-    // null-terminate so it's a valid string
-    temp[bytes] = '\0';
-
-    close(fd);
-
-    // Allocate memory for returned string and +1 for null terminator
-    char *result = malloc(bytes + 1);
-
+    // handles case where size is 0
+    if (st.st_size == 0)
+    {
+        flock(fd, LOCK_UN);
+        close(fd);
+        char *empty = malloc(1);
+        if (empty) empty[0] = '\0';
+        return empty;
+    }
+    // Allocate memory for file content and +1 for null terminator
+    char *result = malloc(st.st_size + 1);
     // check if memory allocation failed
     if(!result)
+    {
+        flock(fd, LOCK_UN);
+        close(fd);
         return NULL;
-
-    // copy data from temp to result
-    strcpy(result, temp);
-
+    }
+    ssize_t total = 0;
+    ssize_t bytes;
+    // read entire file (handles partial reads)
+    while (total < st.st_size)
+    {
+        bytes = read(fd, result + total, st.st_size - total);
+        // check if operation (read) failed
+        if(bytes <= 0) 
+        {
+            free(result);
+            flock(fd, LOCK_UN);
+            close(fd);
+            return NULL;
+        }
+        total += bytes;
+    }
+    // null-terminate so it's a valid string
+    result[st.st_size] = '\0';
+    flock(fd, LOCK_UN);
+    close(fd);
     // note to self: remember to free() the string (malloc)
     return result;
 }
@@ -79,15 +103,32 @@ char *read_file(const char *path)
 int update_file(const char *path, const char *content) 
 {
     // O_WRONLY -> Write only, O_TRUNC -> overwrite existing file contents
-    int fd = open(path, O_WRONLY | O_TRUNC);
+    int fd = open(path, O_WRONLY);
     if (fd == -1)
     {
-        return -1; // errno already set
+        return -1; 
     }
-
-    // Write new content into the file
-    write(fd, content, strlen(content));
-
+    // file lock (non-blocking) for writing
+    if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
+        close(fd);
+        errno = EBUSY;
+        return -1;
+    }
+    // truncate after locking
+    if (ftruncate(fd, 0) == -1) {
+        flock(fd, LOCK_UN);
+        close(fd);
+        return -1;
+    }
+    // writes new content into the file
+    ssize_t written = write(fd, content, strlen(content));
+    if (written == -1)
+    {
+        flock(fd, LOCK_UN);
+        close(fd);
+        return -1;
+    }
+    flock(fd, LOCK_UN);
     close(fd);
     return 0;
 }
@@ -97,7 +138,7 @@ int delete_file(const char *path)
 {
     if (unlink(path) == -1)
     {
-        return -1; // errno already set
+        return -1; 
     }
 
     return 0;
@@ -108,7 +149,7 @@ int delete_directory(const char *path)
 {
     if (rmdir(path) == -1)
     {
-        return -1; // errno already set
+        return -1; 
     }
 
     return 0;
@@ -119,8 +160,23 @@ int rename_item(const char *old_path, const char *new_path)
 {
     if (rename(old_path, new_path) == -1)
     {
-        return -1; // errno already set
+        return -1; 
     }
 
+    return 0;
+}
+
+int navigate(const char *path)
+{
+    struct stat st;
+    if (stat(path, &st) == -1)
+    {
+        return -1; 
+    }
+    if (!S_ISDIR(st.st_mode))
+    {
+        errno = ENOTDIR;
+        return -1;
+    }
     return 0;
 }

@@ -4,6 +4,7 @@
 *.a
 *.so
 filemanager
+lockholder
 
 # ---------- Build folders ----------
 build/
