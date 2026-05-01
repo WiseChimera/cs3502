@@ -324,6 +324,47 @@ void on_save()
     g_free(text);
 }
 
+void on_move()
+{
+    if (!selected_item)
+    {
+        set_error("No item selected");
+        return;
+    }
+
+    char *dest_dir = show_input_dialog("Enter destination directory path");
+    if (!dest_dir)
+        return;
+
+    // get name of file/folder
+    const char *name = strrchr(selected_item->full_path, '/');
+    name = (name) ? name + 1 : selected_item->full_path;
+
+    // build new path
+    char new_path[1024];
+    snprintf(new_path, sizeof(new_path), "%s/%s", dest_dir, name);
+
+    // basic safety: prevent moving into same location
+    if (strcmp(new_path, selected_item->full_path) == 0)
+    {
+        set_error("Source and destination are the same");
+        free(dest_dir);
+        return;
+    }
+
+    if (rename_item(selected_item->full_path, new_path) == 0)
+    {
+        set_status("Moved successfully");
+    }
+    else
+    {
+        show_error_popup(get_error_message());
+    }
+
+    free(dest_dir);
+    refresh_file_list(0);
+}
+
 /* ---------- GUI ---------- */
 static void activate(GtkApplication *app, gpointer user_data)
 {
@@ -367,6 +408,7 @@ static void activate(GtkApplication *app, gpointer user_data)
     GtkWidget *b_back = gtk_button_new_with_label("Back");
     GtkWidget *b_save = gtk_button_new_with_label("Save");
     GtkWidget *b_open = gtk_button_new_with_label("Open");
+    GtkWidget *b_move = gtk_button_new_with_label("Move");
 
     gtk_box_pack_start(GTK_BOX(btn_box), b1, FALSE, FALSE, 5);
     gtk_box_pack_start(GTK_BOX(btn_box), b2, FALSE, FALSE, 5);
@@ -375,6 +417,7 @@ static void activate(GtkApplication *app, gpointer user_data)
     gtk_box_pack_start(GTK_BOX(btn_box), b_back, FALSE, FALSE, 5);
     gtk_box_pack_start(GTK_BOX(btn_box), b_save, FALSE, FALSE, 5);
     gtk_box_pack_start(GTK_BOX(btn_box), b_open, FALSE, FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(btn_box), b_move, FALSE, FALSE, 5);
 
     g_signal_connect(b1, "clicked", G_CALLBACK(on_create_file), NULL);
     g_signal_connect(b2, "clicked", G_CALLBACK(on_create_folder), NULL);
@@ -383,6 +426,7 @@ static void activate(GtkApplication *app, gpointer user_data)
     g_signal_connect(b_back, "clicked", G_CALLBACK(on_back), NULL);
     g_signal_connect(b_save, "clicked", G_CALLBACK(on_save), NULL);
     g_signal_connect(b_open, "clicked", G_CALLBACK(on_open), NULL);
+    g_signal_connect(b_move, "clicked", G_CALLBACK(on_move), NULL);
 
     gtk_box_pack_start(GTK_BOX(box), btn_box, FALSE, FALSE, 5);
 
